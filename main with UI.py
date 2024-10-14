@@ -1,11 +1,115 @@
-
-import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
+import pandas as pd
 
-#Run code with streamlit run "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/main.py"  replacing the file location 
+# Initialize session state for navigation and data storage
+if 'page' not in st.session_state:
+    st.session_state.page = 'upload_screen_1'  # Set default page
+if 'cost_df' not in st.session_state:
+    st.session_state.cost_df = None
+if 'attribute_df' not in st.session_state:
+    st.session_state.attribute_df = None
 
-def execute_code():
+def main():
+    # Route to the correct page based on session state
+    if st.session_state.page == 'upload_screen_1':
+        show_initial_screen()
+    elif st.session_state.page == 'upload_screen_2':
+        upload_attr_data_page()
+    elif st.session_state.page == 'chart_screen':
+        show_chart_screen()
+
+def navigate_to_upload_screen_1():
+    st.session_state.page = 'upload_screen_1'
+
+def navigate_to_upload_screen_2():
+    st.session_state.page = 'upload_screen_2'
+
+def navigate_to_chart_screen():
+    st.session_state.page = 'chart_screen'
+
+def show_initial_screen():
+    st.title("Interactive EVM Tool")
+    st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
+    st.subheader("Upload Cost Data")
+
+    
+    # File uploader for home page
+    uploaded_file = st.file_uploader("Choose your cost profile dataset", type=['csv', 'xlsx'])
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+
+            # Format columns
+            df['Date'] = pd.to_datetime(df['Date'])  # Format date column
+            df['Cost'] = pd.to_numeric(df['Cost'], errors='coerce')  # Format cost column as numeric
+            df['Item Number'] = df['Item Number'].astype(str)  # Format item number as string
+            df['Type'] = df['Type'].astype(str)  # Format type as string
+
+            st.write("Data Preview:")
+            st.dataframe(df.head())
+            st.success(f"File '{uploaded_file.name}' successfully uploaded on the home page!")
+            st.session_state.cost_df = df  # Store the dataframe in session state
+            st.button("Next", on_click=navigate_to_upload_screen_2)
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+def upload_attr_data_page():
+    st.title("Interactive EVM Tool")
+    st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
+    st.subheader("Upload Attribute Data")
+    
+    # File uploader for feeder page
+    uploaded_file = st.file_uploader("Choose a file for feeder page", type=['csv', 'xlsx'])
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+
+                        # Format columns for attributes data
+            df['Item Number'] = df['Item Number'].astype(str)  # Format item number as string
+            df['Cost'] = pd.to_numeric(df['Cost'], errors='coerce')  # Format cost as numeric
+            df['Lead Time'] = pd.to_numeric(df['Lead Time'], errors='coerce')  # Format lead time as numeric
+            df['Yield'] = pd.to_numeric(df['Yield'], errors='coerce') / 100  # Format yield as percentage
+            df['Hours'] = pd.to_numeric(df['Hours'], errors='coerce')  # Format hours as numeric
+
+            st.write("Data Preview:")
+            st.dataframe(df.head())
+            st.success(f"File '{uploaded_file.name}' successfully uploaded on the feeder page!")
+            st.session_state.attribute_df = df  # Store the dataframe in session state
+            st.button("Next", on_click=navigate_to_chart_screen)
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+def show_chart_screen():
+    st.title("Interactive EVM Tool")
+    st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
+    st.subheader("Chart Screen")
+   
+    if st.session_state.cost_df is not None and st.session_state.attribute_df is not None:
+        
+        tab1, tab2 = st.tabs([
+            "Cummulative Line Chart",
+            "Bubble Chart",
+            
+        ]
+        )
+
+        with tab1:
+            st.write("Cummulative Line Chart")
+            #st.dataframe(st.session_state.cost_df.head())
+            execute_code(st.session_state.cost_df, st.session_state.attribute_df, chart_type="line_chart")
+
+        with tab2:
+            st.write("Attribute Data Preview:")
+            #st.dataframe(st.session_state.attribute_df.head())
+            execute_code(st.session_state.cost_df, st.session_state.attribute_df, chart_type="bubble_chart")
+
+def execute_code(cost_df,attributes_df, chart_type="line_chart" ):
 
     st.title("Interactive EVM Analysis")
         
@@ -15,8 +119,8 @@ def execute_code():
     item_cost = 22 #usd
     item_yeild = .80 #%
     item_hours = 2.5 #hours
-    cost_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/InitialUploadData.csv"
-    attrib_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/AttributesData.csv"
+    #cost_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/InitialUploadData.csv"
+    #attrib_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/AttributesData.csv"
 
 
     #create dictionary of user inputs
@@ -28,8 +132,8 @@ def execute_code():
     }
 
     #Upload both datafiles
-    cost_df = import_cost_data(cost_datafile_location)
-    attributes_df = import_attributes_data(attrib_datafile_location)
+    #cost_df = import_cost_data(cost_datafile_location)
+    #attributes_df = import_attributes_data(attrib_datafile_location)
 
     #filter the cost_df by the desire item number
     filtered_df = filter_data(cost_df, item_number)
@@ -47,14 +151,13 @@ def execute_code():
     #Calculate EVM data and adds columns to the combined_data_set for the time-phased values
     combined_data_set_with_evm, evm_summary_data = calculate_evm(combined_data_set) 
     
-    # Plot line chart using Streamlit
-    st.header("Line Chart: Time Phased Data")
-    plot_line_chart_with_percent_delta(combined_data_set_with_evm, evm_summary_data, "Baseline", "Modified", "Time Phased Data")
-
-    # Plot bubble chart using Streamlit
-    st.header("Bubble Chart: Baseline vs Current Costs")
-    plot_bubble_chart(combined_data_set)
-
+    # Plot the relevant chart based on the chart type
+    if chart_type == "line_chart":
+        fig1 = plot_line_chart_with_percent_delta(combined_data_set_with_evm, evm_summary_data, "Baseline", "Modified", "")
+        st.plotly_chart(fig1, use_container_width=True)
+    elif chart_type == "bubble_chart":
+        fig2 = plot_bubble_chart(combined_data_set)
+        st.plotly_chart(fig2, use_container_width=True)
 
 def validate_columns_exist(expected_columns, df):
 
@@ -156,8 +259,10 @@ def modify_dataset(filtered_df, impacts_dic):
     modified_df.loc[filtered_df['Type'] == 'Material', 'Cost'] *= impacts_dic['material_impacts']
 
     #modify filtered_df date column by aadding impacts_dic item date_impacts
-    modified_df['Date'] += pd.to_timedelta(impacts_dic['date_impacts'], unit='d')
-
+    modified_df['Date'] = pd.to_datetime(modified_df['Date'])
+    date_impact = pd.Timedelta(days=impacts_dic['date_impacts'])
+    modified_df['Date'] = modified_df['Date'] + date_impact
+    
     return modified_df 
 
 def create_common_x_value(filtered_df, modified_df):
@@ -401,7 +506,7 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
 
 
 
-    st.plotly_chart(fig)
+    return fig
 
 def plot_bubble_chart(data):
 
@@ -457,7 +562,10 @@ def plot_bubble_chart(data):
         showlegend=False  # Remove the legend
     )
 
-    st.plotly_chart(fig)
+    return fig
 
+
+# Run the app
 if __name__ == "__main__":
-    execute_code()
+    main()
+
