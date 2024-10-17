@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
+
 
 # Initialize session state for navigation and data storage
 if 'page' not in st.session_state:
@@ -208,7 +210,7 @@ def import_attributes_data(datafile_location):
 def filter_data(df, filter_item_number):
 
     #create a acopy of the datafile to filter
-    filtered_data = df
+    filtered_data = df.copy() #Thank you! :)
 
     if filter_item_number:
         filtered_data = filtered_data[filtered_data['Item Number'].astype(str) == filter_item_number]
@@ -321,6 +323,7 @@ def calculate_evm(combined_data_set):
     EAC = combined_data_set['Modified_Costs'].sum()
     
     # Iterate over each date in the combined dataset
+    #TODO remove current_date if not used
     for idx, current_date in  enumerate(combined_data_set['Date']):
         # Filter the data to include only dates up to the current date
         current_data = combined_data_set.iloc[:idx + 1]
@@ -504,6 +507,16 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
                     b=50)  # Adjust 'r' for right margin size (150px in this example)
     )
 
+    #TODO play around with this formatting
+    # Update x-axis to show datetime tick marks and values
+    fig.update_xaxes(
+        tickformat='%Y-%m-%d',  # Format for datetime tick marks
+        tickmode='auto',        # Automatically determine the number of ticks
+        tickangle=45,           # Angle of the tick labels
+        title_text='Date'       # Title of the x-axis
+        )
+
+    fig.update_layout(paper_bgcolor ="black") # make background black b/c I don't know how to get black tick labels
 
 
     return fig
@@ -557,6 +570,7 @@ def plot_bubble_chart(data):
                 ])
             )
         ),
+        #TODO once formatting is finalized, modify this to match
         plot_bgcolor='white',
         paper_bgcolor='white',
         showlegend=False  # Remove the legend
