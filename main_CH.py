@@ -15,8 +15,8 @@ def execute_code():
     item_cost = 22 #usd
     item_yeild = .80 #%
     item_hours = 2.5 #hours
-    cost_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/InitialUploadData.csv"
-    attrib_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/AttributesData.csv"
+    cost_datafile_location = "sample data/InitialUploadData.csv"  # Ch alwasys use relative paths!
+    attrib_datafile_location = "sample data/AttributesData.csv"
 
 
     #create dictionary of user inputs
@@ -105,7 +105,7 @@ def import_attributes_data(datafile_location):
 def filter_data(df, filter_item_number):
 
     #create a acopy of the datafile to filter
-    filtered_data = df
+    filtered_data = df.copy()  #CH
 
     if filter_item_number:
         filtered_data = filtered_data[filtered_data['Item Number'].astype(str) == filter_item_number]
@@ -216,7 +216,7 @@ def calculate_evm(combined_data_set):
     EAC = combined_data_set['Modified_Costs'].sum()
     
     # Iterate over each date in the combined dataset
-    for idx, current_date in  enumerate(combined_data_set['Date']):
+    for idx, current_date in  enumerate(combined_data_set['Date']):  # CH current_date is not used ?
         # Filter the data to include only dates up to the current date
         current_data = combined_data_set.iloc[:idx + 1]
 
@@ -376,7 +376,7 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
 
     # Customize the layout
     fig.update_layout(
-        title=dict(
+        title=dict(           
             text=chart_title,
             x=0.5,
             xanchor='center',
@@ -399,7 +399,15 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
                     b=50)  # Adjust 'r' for right margin size (150px in this example)
     )
 
+    # Update x-axis to show datetime tick marks and values
+    fig.update_xaxes(
+        tickformat='%Y-%m-%d',  # Format for datetime tick marks
+        tickmode='auto',        # Automatically determine the number of ticks
+        tickangle=45,           # Angle of the tick labels
+        title_text='Date'       # Title of the x-axis
+        )
 
+    fig.update_layout(paper_bgcolor ="black") # make background black b/c I don't know how to get black tick labels
 
     st.plotly_chart(fig)
 
