@@ -1,4 +1,5 @@
 import streamlit as st
+st.set_page_config(layout="wide")
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -88,50 +89,128 @@ def upload_attr_data_page():
             st.error(f"Error: {e}")
 
 def show_chart_screen():
-    st.title("Interactive EVM Tool")
+    st.header("Interactive EVM Tool")
     st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
-    st.subheader("Chart Screen")
-   
+    
+   #TODO delete the previous chart and then display the new one
     if st.session_state.cost_df is not None and st.session_state.attribute_df is not None:
-        
-        tab1, tab2 = st.tabs([
-            "Cummulative Line Chart",
-            "Bubble Chart",
+                # Create two columns: one for inputs (left) and one for charts (right)
+        #col1, col2 = st.columns([1, 3])  # Ratio defines the size of each column
+
+        #with col1:      
+            unique_items = st.session_state.cost_df['Item Number'].unique()
+            selected_item = st.sidebar.selectbox("Select Item Number", unique_items)
+
+            # Get default attribute values for the selected item
+            item_attributes = st.session_state.attribute_df[st.session_state.attribute_df['Item Number'] == selected_item]
             
-        ]
-        )
+            if not item_attributes.empty:
+                default_cost = item_attributes['Cost'].values[0]
+                default_lead_time = item_attributes['Lead Time'].values[0]
+                default_yield = item_attributes['Yield'].values[0]
+                default_hours = item_attributes['Hours'].values[0]
+            else:
+                st.warning("No matching attributes found for the selected item.")
+                return
 
-        with tab1:
-            st.write("Cummulative Line Chart")
-            #st.dataframe(st.session_state.cost_df.head())
-            execute_code(st.session_state.cost_df, st.session_state.attribute_df, chart_type="line_chart")
+            # Create slider bars with default values from the attribute data
+      
+            cost_slider = st.sidebar.slider(
+                f"Material Cost (default: ${default_cost})",
+                min_value=0.0, 
+                max_value=float(10*default_cost), 
+                value=float(default_cost))
+            #if cost_slider > default_cost:
+            #    st.write(f"{(cost_slider - default_cost) / default_cost:.2%} increase in material costs")
+            #elif cost_slider < default_cost:
+            #    st.write(f"{(cost_slider - default_cost) / default_cost:.2%} decrease in material costs")
+            #else:
+            st.expander("0% change to material cost")
+            #    st.write("")
 
-        with tab2:
-            st.write("Attribute Data Preview:")
-            #st.dataframe(st.session_state.attribute_df.head())
-            execute_code(st.session_state.cost_df, st.session_state.attribute_df, chart_type="bubble_chart")
+            st.sidebar.divider()
 
-def execute_code(cost_df,attributes_df, chart_type="line_chart" ):
+            lead_time_slider = st.sidebar.slider(
+                "Lead Time (days)", 
+                min_value=0, 
+                max_value=default_lead_time*10, 
+                value=int(default_lead_time)
+                )
+            #if lead_time_slider > default_lead_time:
+            #    st.write(f"{(lead_time_slider - default_lead_time) / default_lead_time:.2%} increase in leadtime")
+            #elif lead_time_slider < default_lead_time:
+            #    st.write(f"{(lead_time_slider - default_lead_time) / default_lead_time:.2%} decrease in leadtime")
+            #else:
+            #    st.write("0% change to leadtime")
+            st.sidebar.divider()
 
-    st.title("Interactive EVM Analysis")
-        
-    #User Inputs
-    item_number = "10001"
-    item_lead_time = 20 #days
-    item_cost = 22 #usd
-    item_yeild = .80 #%
-    item_hours = 2.5 #hours
-    #cost_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/InitialUploadData.csv"
-    #attrib_datafile_location = "c:/Users/CassieLynn/Documents/Python/CassieSmith - EVM Impacts Project/EVM-Impact-Calculator/sample data/AttributesData.csv"
+            yield_slider = st.sidebar.slider(
+                "Yield (%)", 
+                min_value=0.0,
+                max_value=1.0, 
+                value=float(default_yield)
+                )
+            #if yield_slider > default_yield:
+            #    st.write(f"{(yield_slider - default_yield) / default_yield:.2%} increase in leadtime")
+            #elif yield_slider < default_yield:
+            #    st.write(f"{(yield_slider - default_yield) / default_yield:.2%} decrease in leadtime")
+            #else:
+            #    st.write("0% change to leadtime")
+            st.sidebar.divider()
+
+            hours_slider = st.sidebar.slider(
+                "Hours", 
+                min_value=0.0, 
+                max_value=10.0, 
+                value=float(default_hours)
+                )
+            #if hours_slider > default_hours:
+            #    st.write(f"{(hours_slider - default_hours) / default_hours:.2%} increase in leadtime")
+            #elif hours_slider < default_hours:
+            #    st.write(f"{(hours_slider - default_hours) / default_hours:.2%} decrease in leadtime")
+            #else:
+            #    st.write("0% change to leadtime")
+            # User attributes dictionary based on slider values
+            user_attributes_dictionary = {
+                "item_lead_time": lead_time_slider,
+                "item_cost": cost_slider,
+                "item_yeild": yield_slider,
+                "item_hours": hours_slider
+            }
+
+        #with col2: 
+            tab1, tab2 = st.tabs([
+                "Cummulative Line Chart",
+                "Bubble Chart",
+                
+            ]
+            )
+
+            with tab1:
+                #st.dataframe(st.session_state.cost_df.head())
+                st.write("Cummulative Line Chart")
+                placeholder = st.empty()
+                with placeholder.container():
+                    generate_charts(st.session_state.cost_df, st.session_state.attribute_df, item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="line_chart")
+
+            with tab2:
+                #st.dataframe(st.session_state.attribute_df.head())
+                st.write("Cummulative Line Chart")
+                placeholder = st.empty()
+                with placeholder.container():
+                    generate_charts(st.session_state.cost_df, st.session_state.attribute_df,item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="bubble_chart")
+
+def generate_charts(
+        cost_df,
+        attributes_df, 
+        user_attributes_dictionary,
+        chart_type="line_chart",
+        item_number=""
+        ):
 
 
-    #create dictionary of user inputs
-    user_attributes_dictionary = {
-        "item_lead_time": item_lead_time,  
-        "item_cost": item_cost,     
-        "item_yeild": item_yeild,
-        "item_hours":item_hours
-    }
+
+
 
     #Upload both datafiles
     #cost_df = import_cost_data(cost_datafile_location)
@@ -148,7 +227,7 @@ def execute_code(cost_df,attributes_df, chart_type="line_chart" ):
     modified_df = modify_dataset(filtered_df, impacts_dic)
 
     #create a common X dataset - combined data set is three columns, x value of dates, y values of og costs, and y values of modified costs
-    combined_data_set = create_common_x_value(filtered_df, modified_df)
+    combined_data_set = create_common_x_value_by_month(filtered_df, modified_df)
 
     #Calculate EVM data and adds columns to the combined_data_set for the time-phased values
     combined_data_set_with_evm, evm_summary_data = calculate_evm(combined_data_set) 
@@ -236,8 +315,8 @@ def assess_impacts(initial_attributes, user_attributes_dictionary):
     new_item_hours = (user_attributes_dictionary["item_hours"]-initial_item_hours)/initial_item_hours #percentage will be applied to labor costs
 
     #summarize change impacts
-    material_impacts = (1 + new_cost_percent + new_yield)
-    labor_impacts = (1 + new_item_hours + new_yield)
+    material_impacts = (1 + new_cost_percent - new_yield)
+    labor_impacts = (1 + new_item_hours - new_yield)
     date_impacts = new_lead_time
 
     #add to dictionary for simplicity downstream
@@ -302,7 +381,45 @@ def create_common_x_value(filtered_df, modified_df):
     })
 
         return combined_data_set 
+def create_common_x_value_by_month(filtered_df, modified_df):
+    # Ensure the Date columns are in datetime format
+    filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])
+    modified_df['Date'] = pd.to_datetime(modified_df['Date'])
 
+    # Resample both datasets by month, using the last day of each month, and sum the costs
+    dataset_1_monthly = filtered_df.resample('M', on='Date').sum().reset_index()
+    dataset_2_monthly = modified_df.resample('M', on='Date').sum().reset_index()
+
+    # Extract x (dates) and y (costs) values for both datasets
+    x_values_1 = dataset_1_monthly['Date']
+    y_values_1 = dataset_1_monthly['Cost']
+
+    x_values_2 = dataset_2_monthly['Date']
+    y_values_2 = dataset_2_monthly['Cost']
+
+    # Create a common x_value range from the minimum to the maximum dates
+    min_date = min(x_values_1.min(), x_values_2.min())
+    max_date = max(x_values_1.max(), x_values_2.max())
+
+    # Generate the common date range at monthly intervals
+    x_values_common = pd.date_range(start=min_date, end=max_date, freq='M')
+
+    # Create dictionaries to map costs to each date
+    y_values_dict_1 = dict(zip(x_values_1, y_values_1))
+    y_values_dict_2 = dict(zip(x_values_2, y_values_2))
+
+    # Align y-values to the common date range, filling missing dates with 0
+    y_values_1_aligned = [y_values_dict_1.get(date, 0) for date in x_values_common]
+    y_values_2_aligned = [y_values_dict_2.get(date, 0) for date in x_values_common]
+
+    # Combine data for export
+    combined_data_set = pd.DataFrame({
+        'Date': x_values_common,
+        'Initial_Costs': y_values_1_aligned,
+        'Modified_Costs': y_values_2_aligned
+    })
+
+    return combined_data_set
 def calculate_evm(combined_data_set):
     
     # Initialize lists to store calculated values
@@ -490,7 +607,7 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
             xanchor='center',
             yanchor='top'
         ),
-
+        height = 600,
         hovermode='x unified',
         yaxis_tickprefix='$',
         yaxis_tickformat=',.0f',
@@ -498,9 +615,11 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
         plot_bgcolor='white',  # Set the plot background to white
         paper_bgcolor='white',  # Set the overall chart background to white
         xaxis=dict(showgrid=True, 
-                   gridcolor='lightgray'),  # Set grid lines for better visibility
+                   gridcolor='lightgray',
+                   color='green'),  # Set grid lines for better visibility
         yaxis=dict(showgrid=True, 
-                   gridcolor='lightgray'),
+                   gridcolor='lightgray',
+                   color='blue'),
         margin=dict(l=80, 
                     r=150, 
                     t=50, 
@@ -510,13 +629,23 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
     #TODO play around with this formatting
     # Update x-axis to show datetime tick marks and values
     fig.update_xaxes(
-        tickformat='%Y-%m-%d',  # Format for datetime tick marks
+        tickformat='%Y-%m',  # Format for datetime tick marks
         tickmode='auto',        # Automatically determine the number of ticks
-        tickangle=45,           # Angle of the tick labels
-        title_text='Date'       # Title of the x-axis
+        tickangle=0,           # Angle of the tick labels
+        title_text='Date',
+        title_font=dict(color='black'),  # Explicitly set title font color
+        tickfont=dict(color='black')      # Title of the x-axis
         )
 
-    fig.update_layout(paper_bgcolor ="black") # make background black b/c I don't know how to get black tick labels
+    fig.update_yaxes(
+        tickformat='$,.2f',  # Format for datetime tick marks
+        tickmode='auto',        # Automatically determine the number of ticks
+        title_text='dollars',
+        title_font=dict(color='black'),  # Explicitly set title font color
+        tickfont=dict(color='black')      # Title of the x-axis
+        )
+
+    #fig.update_layout(paper_bgcolor ="white") # make background black b/c I don't know how to get black tick labels
 
 
     return fig
@@ -548,8 +677,11 @@ def plot_bubble_chart(data):
     # Customize the layout
     fig.update_layout(
         title='Baseline vs Current Costs Over Time',
+        height = 600,
         xaxis_title='Date',
         yaxis_title='',
+        yaxis_tickprefix='$',
+        yaxis_tickformat=',.0f',
         yaxis=dict(
             showgrid=True,
             gridcolor='lightgray',
@@ -570,12 +702,26 @@ def plot_bubble_chart(data):
                 ])
             )
         ),
-        #TODO once formatting is finalized, modify this to match
+
         plot_bgcolor='white',
         paper_bgcolor='white',
         showlegend=False  # Remove the legend
     )
+    fig.update_xaxes(
+        tickformat='%Y-%m',  # Format for datetime tick marks
+        tickmode='auto',        # Automatically determine the number of ticks
+        tickangle=0,           # Angle of the tick labels
+        title_text='Date',
+        title_font=dict(color='black'),  # Explicitly set title font color
+        tickfont=dict(color='black')      # Title of the x-axis
+        )
 
+    fig.update_yaxes(
+        tickmode='auto',        # Automatically determine the number of ticks
+        title_text='dollars',
+        title_font=dict(color='black'),  # Explicitly set title font color
+        tickfont=dict(color='black')      # Title of the x-axis
+        )
     return fig
 
 
