@@ -1,3 +1,4 @@
+#Import libraries
 import streamlit as st
 st.set_page_config(layout="wide")
 import pandas as pd
@@ -22,21 +23,24 @@ def main():
         show_chart_screen()
 
 def navigate_to_upload_screen_1():
+    """modifies the session state page to the first screen"""
     st.session_state.page = 'upload_screen_1'
 
 def navigate_to_upload_screen_2():
+    """modifies the session state page to the second screen"""
     st.session_state.page = 'upload_screen_2'
 
 def navigate_to_chart_screen():
+    """modifies the session state page to the final screen"""
     st.session_state.page = 'chart_screen'
 
 def show_initial_screen():
+    """Launches the screen to upload the detailed datafile"""
     st.title("Interactive EVM Tool")
     st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
     st.subheader("Upload Cost Data")
 
-    
-    # File uploader for home page
+    # File uploader to get the data file loaded 
     uploaded_file = st.file_uploader("Choose your cost profile dataset", type=['csv', 'xlsx'])
     if uploaded_file is not None:
         try:
@@ -45,26 +49,40 @@ def show_initial_screen():
             else:
                 df = pd.read_excel(uploaded_file)
 
-            # Format columns
-            df['Date'] = pd.to_datetime(df['Date'])  # Format date column
-            df['Cost'] = pd.to_numeric(df['Cost'], errors='coerce')  # Format cost column as numeric
-            df['Item Number'] = df['Item Number'].astype(str)  # Format item number as string
-            df['Type'] = df['Type'].astype(str)  # Format type as string
+            # Define expected columns for detail data
+            expected_columns = ['Date', 'Cost', 'Item Number', 'Type']
+            valid_file = validate_columns_exist(expected_columns, df)
 
-            st.write("Data Preview:")
-            st.dataframe(df.head())
-            st.success(f"File '{uploaded_file.name}' successfully uploaded on the home page!")
-            st.session_state.cost_df = df  # Store the dataframe in session state
-            st.button("Next", on_click=navigate_to_upload_screen_2)
+            if valid_file:
+                # Format columns
+                df['Date'] = pd.to_datetime(df['Date'])  # Format date column
+                df['Cost'] = pd.to_numeric(df['Cost'], errors='coerce')  # Format cost column as numeric
+                df['Item Number'] = df['Item Number'].astype(str)  # Format item number as string
+                df['Type'] = df['Type'].astype(str)  # Format type as string
+                
+                #create a data preview
+                st.write("Data Preview:")
+                st.dataframe(df.head())
+                st.success(f"File '{uploaded_file.name}' successfully uploaded file")
+                st.session_state.cost_df = df  # Store the dataframe in session state
+                st.button("Next", on_click=navigate_to_upload_screen_2)
+
+            else:
+                st.error(f"missing columns from file")
+                st.write("required columns: Date, Cost, Item Number, Type")
+                st.write("Data Preview:")
+                st.dataframe(df.head())
+
         except Exception as e:
             st.error(f"Error: {e}")
 
 def upload_attr_data_page():
+    """Launches a screen to upload the data attributes"""
     st.title("Interactive EVM Tool")
     st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
     st.subheader("Upload Attribute Data")
-    
-    # File uploader for feeder page
+
+    # File uploader to get item attributes data
     uploaded_file = st.file_uploader("Choose a file for feeder page", type=['csv', 'xlsx'])
     if uploaded_file is not None:
         try:
@@ -73,32 +91,50 @@ def upload_attr_data_page():
             else:
                 df = pd.read_excel(uploaded_file)
 
-                        # Format columns for attributes data
-            df['Item Number'] = df['Item Number'].astype(str)  # Format item number as string
-            df['Cost'] = pd.to_numeric(df['Cost'], errors='coerce')  # Format cost as numeric
-            df['Lead Time'] = pd.to_numeric(df['Lead Time'], errors='coerce')  # Format lead time as numeric
-            df['Yield'] = pd.to_numeric(df['Yield'], errors='coerce') / 100  # Format yield as percentage
-            df['Hours'] = pd.to_numeric(df['Hours'], errors='coerce')  # Format hours as numeric
 
-            st.write("Data Preview:")
-            st.dataframe(df.head())
-            st.success(f"File '{uploaded_file.name}' successfully uploaded on the feeder page!")
-            st.session_state.attribute_df = df  # Store the dataframe in session state
-            st.button("Next", on_click=navigate_to_chart_screen)
+            # Define expected columns for attributes data
+            expected_columns = ['Item Number', 'Cost', 'Lead Time', 'Yield', 'Hours']
+            valid_file = validate_columns_exist(expected_columns, df)
+
+            if valid_file:
+
+                # Format columns for attributes data
+                df['Item Number'] = df['Item Number'].astype(str)  # Format item number as string
+                df['Cost'] = pd.to_numeric(df['Cost'], errors='coerce')  # Format cost as numeric
+                df['Lead Time'] = pd.to_numeric(df['Lead Time'], errors='coerce')  # Format lead time as numeric
+                df['Yield'] = pd.to_numeric(df['Yield'], errors='coerce') / 100  # Format yield as percentage
+                df['Hours'] = pd.to_numeric(df['Hours'], errors='coerce')  # Format hours as numeric
+
+                #create a data preview
+                st.write("Data Preview:")
+                st.dataframe(df.head())
+                st.success(f"File '{uploaded_file.name}' successfully uploaded file")
+                st.session_state.attribute_df = df  # Store the dataframe in session state
+                st.button("Next", on_click=navigate_to_chart_screen)
+            else:
+                st.error(f"missing required columns")
+                st.write("required columns: Item Number, Cost, Lead Time, Yield, Hours")
+                st.write("Data Preview:")
+                st.dataframe(df.head())
+
         except Exception as e:
             st.error(f"Error: {e}")
+            
+def show_chart_screen():    
+    """Launches the final screen that includes the charts based on the uploaded data file"""
 
-def show_chart_screen():
+    #determines multipliers that defines max value of slider bars
+    material_multiplier = 10 
+    leadtime_multiplier = 10 
+
     st.header("Interactive EVM Tool")
-    st.write("This tool will take a cost profile and item attributes to create an understanding of changes to EVM data")
     
-   #TODO delete the previous chart and then display the new one
     if st.session_state.cost_df is not None and st.session_state.attribute_df is not None:
-                # Create two columns: one for inputs (left) and one for charts (right)
-        #col1, col2 = st.columns([1, 3])  # Ratio defines the size of each column
-
-        #with col1:      
+     
+            # create a unique list of items from the cost data file
             unique_items = st.session_state.cost_df['Item Number'].unique()
+
+            #Use unique list to create dropdown box for user interaction
             selected_item = st.sidebar.selectbox("Select Item Number", unique_items)
 
             # Get default attribute values for the selected item
@@ -113,63 +149,44 @@ def show_chart_screen():
                 st.warning("No matching attributes found for the selected item.")
                 return
 
-            # Create slider bars with default values from the attribute data
-      
+            # Material Cost Slider Bar
             cost_slider = st.sidebar.slider(
                 f"Material Cost (default: ${default_cost})",
                 min_value=0.0, 
-                max_value=float(10*default_cost), 
-                value=float(default_cost))
-            #if cost_slider > default_cost:
-            #    st.write(f"{(cost_slider - default_cost) / default_cost:.2%} increase in material costs")
-            #elif cost_slider < default_cost:
-            #    st.write(f"{(cost_slider - default_cost) / default_cost:.2%} decrease in material costs")
-            #else:
-            st.expander("0% change to material cost")
-            #    st.write("")
+                max_value=float(material_multiplier*default_cost), 
+                value=float(default_cost)
+                )
 
             st.sidebar.divider()
 
+            # Lead Time Slider Bar
             lead_time_slider = st.sidebar.slider(
-                "Lead Time (days)", 
+                "Lead Time (default: ${default_lead_time})", 
                 min_value=0, 
-                max_value=default_lead_time*10, 
+                max_value=default_lead_time*leadtime_multiplier, 
                 value=int(default_lead_time)
                 )
-            #if lead_time_slider > default_lead_time:
-            #    st.write(f"{(lead_time_slider - default_lead_time) / default_lead_time:.2%} increase in leadtime")
-            #elif lead_time_slider < default_lead_time:
-            #    st.write(f"{(lead_time_slider - default_lead_time) / default_lead_time:.2%} decrease in leadtime")
-            #else:
-            #    st.write("0% change to leadtime")
+
             st.sidebar.divider()
 
+            # Yield Slider Bar
             yield_slider = st.sidebar.slider(
                 "Yield (%)", 
                 min_value=0.0,
                 max_value=1.0, 
                 value=float(default_yield)
                 )
-            #if yield_slider > default_yield:
-            #    st.write(f"{(yield_slider - default_yield) / default_yield:.2%} increase in leadtime")
-            #elif yield_slider < default_yield:
-            #    st.write(f"{(yield_slider - default_yield) / default_yield:.2%} decrease in leadtime")
-            #else:
-            #    st.write("0% change to leadtime")
+
             st.sidebar.divider()
 
+            # Hours Slider Bar
             hours_slider = st.sidebar.slider(
                 "Hours", 
                 min_value=0.0, 
                 max_value=10.0, 
                 value=float(default_hours)
                 )
-            #if hours_slider > default_hours:
-            #    st.write(f"{(hours_slider - default_hours) / default_hours:.2%} increase in leadtime")
-            #elif hours_slider < default_hours:
-            #    st.write(f"{(hours_slider - default_hours) / default_hours:.2%} decrease in leadtime")
-            #else:
-            #    st.write("0% change to leadtime")
+
             # User attributes dictionary based on slider values
             user_attributes_dictionary = {
                 "item_lead_time": lead_time_slider,
@@ -178,24 +195,19 @@ def show_chart_screen():
                 "item_hours": hours_slider
             }
 
-        #with col2: 
+            #Display charts in tabs 
             tab1, tab2 = st.tabs([
                 "Cummulative Line Chart",
                 "Bubble Chart",
-                
-            ]
-            )
+                ]
+                )
 
-            with tab1:
-                #st.dataframe(st.session_state.cost_df.head())
-                st.write("Cummulative Line Chart")
+            with tab1: #Cummulative line chart
                 placeholder = st.empty()
                 with placeholder.container():
                     generate_charts(st.session_state.cost_df, st.session_state.attribute_df, item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="line_chart")
 
-            with tab2:
-                #st.dataframe(st.session_state.attribute_df.head())
-                st.write("Cummulative Line Chart")
+            with tab2: #Bubble chart
                 placeholder = st.empty()
                 with placeholder.container():
                     generate_charts(st.session_state.cost_df, st.session_state.attribute_df,item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="bubble_chart")
@@ -207,14 +219,7 @@ def generate_charts(
         chart_type="line_chart",
         item_number=""
         ):
-
-
-
-
-
-    #Upload both datafiles
-    #cost_df = import_cost_data(cost_datafile_location)
-    #attributes_df = import_attributes_data(attrib_datafile_location)
+    """generates a line and bubble line chart"""
 
     #filter the cost_df by the desire item number
     filtered_df = filter_data(cost_df, item_number)
@@ -241,55 +246,15 @@ def generate_charts(
         st.plotly_chart(fig2, use_container_width=True)
 
 def validate_columns_exist(expected_columns, df):
-
-        # Check if all expected columns are present in attributes data
-    for column in expected_columns:
-        if column not in df.columns:
-            print(f"Column '{column}' is missing in the attributes data file.")
-
-def import_cost_data(datafile_location):
+    """validates that the required columns exist in the uploaded dataframe"""
+    # Check if all expected columns are present in attributes data
+    return all(column in df.columns for column in expected_columns)
         
-
-    # Import cost data file as CSV 
-    cost_df = pd.read_csv(datafile_location)
-
-    # Define expected columns
-    expected_columns = ['Date', 'Cost', 'Item Number', 'Type']
-    validate_columns_exist(expected_columns, cost_df)
-
-    # Format columns
-    cost_df['Date'] = pd.to_datetime(cost_df['Date'])  # Format date column
-    cost_df['Cost'] = pd.to_numeric(cost_df['Cost'], errors='coerce')  # Format cost column as numeric
-    cost_df['Item Number'] = cost_df['Item Number'].astype(str)  # Format item number as string
-    cost_df['Type'] = cost_df['Type'].astype(str)  # Format type as string
-
-    #return the dataset
-    return cost_df
-
-def import_attributes_data(datafile_location):
-        
-
-    # Import attributes data file as CSV 
-    attributes_df = pd.read_csv(datafile_location)
-
-    # Define expected columns for attributes data
-    expected_columns = ['Item Number', 'Cost', 'Lead Time', 'Yield', 'Hours']
-    validate_columns_exist(expected_columns, attributes_df)
-    
-    # Format columns for attributes data
-    attributes_df['Item Number'] = attributes_df['Item Number'].astype(str)  # Format item number as string
-    attributes_df['Cost'] = pd.to_numeric(attributes_df['Cost'], errors='coerce')  # Format cost as numeric
-    attributes_df['Lead Time'] = pd.to_numeric(attributes_df['Lead Time'], errors='coerce')  # Format lead time as numeric
-    attributes_df['Yield'] = pd.to_numeric(attributes_df['Yield'], errors='coerce') / 100  # Format yield as percentage
-    attributes_df['Hours'] = pd.to_numeric(attributes_df['Hours'], errors='coerce')  # Format hours as numeric
-
-    #return the dataset
-    return attributes_df
-
 def filter_data(df, filter_item_number):
+    """create a copy of the datafile that is filtered to specific item"""
 
     #create a acopy of the datafile to filter
-    filtered_data = df.copy() #Thank you! :)
+    filtered_data = df.copy()
 
     if filter_item_number:
         filtered_data = filtered_data[filtered_data['Item Number'].astype(str) == filter_item_number]
@@ -302,6 +267,7 @@ def filter_data(df, filter_item_number):
 
 def assess_impacts(initial_attributes, user_attributes_dictionary):
 
+    """creates a dictionary of the impacts between initial attributes and user changes"""
     #item_lead_time changes the date only, change will be expressed in days. This will use averages in the case there are multiple data entries for attributes
     initial_lead_time = initial_attributes['Lead Time'].mean() 
     initial_cost = initial_attributes['Cost'].mean() 
@@ -330,6 +296,7 @@ def assess_impacts(initial_attributes, user_attributes_dictionary):
     return impacts_dictionary
 
 def modify_dataset(filtered_df, impacts_dic):
+    """takes the filtered data and makes a modifed dataframe based on impacts"""
 
     modified_df = filtered_df.copy()
 
@@ -346,49 +313,15 @@ def modify_dataset(filtered_df, impacts_dic):
     
     return modified_df 
 
-def create_common_x_value(filtered_df, modified_df):
-
-        # Create Dataset arrays for "Baseline" and "Current"
-        dataset_1 = filtered_df
-        dataset_2 = modified_df
-
-        # Extract x (dates) and y (build costs) values for both datasets
-        x_values_1 = dataset_1['Date']
-        y_values_1 = dataset_1['Cost']
-
-        x_values_2 = dataset_2['Date']
-        y_values_2 = dataset_2['Cost']      
-
-        #create a common x_value
-        min_date = min(x_values_1.min(),x_values_2.min())
-        max_date = max(x_values_1.max(),x_values_2.max())
-
-        x_values_common = pd.date_range(start=min_date, end=max_date)
-        
-        #Create dictionary of datasets
-        y_values_dict_1 = dict(zip(x_values_1,y_values_1))
-        y_values_dict_2 = dict(zip(x_values_2,y_values_2))
-
-        # Align y-values to the common date range, filling missing dates with 0
-        y_values_1_aligned = [y_values_dict_1.get(date, 0) for date in x_values_common]
-        y_values_2_aligned = [y_values_dict_2.get(date, 0) for date in x_values_common]
-
-        # Combine data for export
-        combined_data_set = pd.DataFrame({
-        'Date': x_values_common,
-        'Initial_Costs': y_values_1_aligned,
-        'Modified_Costs': y_values_2_aligned
-    })
-
-        return combined_data_set 
 def create_common_x_value_by_month(filtered_df, modified_df):
+    """creates a consistent date field between both datafiles for the x-axis"""
     # Ensure the Date columns are in datetime format
     filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])
     modified_df['Date'] = pd.to_datetime(modified_df['Date'])
 
     # Resample both datasets by month, using the last day of each month, and sum the costs
-    dataset_1_monthly = filtered_df.resample('M', on='Date').sum().reset_index()
-    dataset_2_monthly = modified_df.resample('M', on='Date').sum().reset_index()
+    dataset_1_monthly = filtered_df.resample('ME', on='Date').sum().reset_index()
+    dataset_2_monthly = modified_df.resample('ME', on='Date').sum().reset_index()
 
     # Extract x (dates) and y (costs) values for both datasets
     x_values_1 = dataset_1_monthly['Date']
@@ -402,7 +335,7 @@ def create_common_x_value_by_month(filtered_df, modified_df):
     max_date = max(x_values_1.max(), x_values_2.max())
 
     # Generate the common date range at monthly intervals
-    x_values_common = pd.date_range(start=min_date, end=max_date, freq='M')
+    x_values_common = pd.date_range(start=min_date, end=max_date, freq='ME')
 
     # Create dictionaries to map costs to each date
     y_values_dict_1 = dict(zip(x_values_1, y_values_1))
@@ -420,8 +353,9 @@ def create_common_x_value_by_month(filtered_df, modified_df):
     })
 
     return combined_data_set
+
 def calculate_evm(combined_data_set):
-    
+    """Calculates the Earned Value Management metrics for each date"""
     # Initialize lists to store calculated values
     pv_to_date_list = []
     schedule_percent_complete_list = []
@@ -440,8 +374,7 @@ def calculate_evm(combined_data_set):
     EAC = combined_data_set['Modified_Costs'].sum()
     
     # Iterate over each date in the combined dataset
-    #TODO remove current_date if not used
-    for idx, current_date in  enumerate(combined_data_set['Date']):
+    for idx in range(len(combined_data_set)):
         # Filter the data to include only dates up to the current date
         current_data = combined_data_set.iloc[:idx + 1]
 
@@ -495,7 +428,7 @@ def calculate_evm(combined_data_set):
     return combined_data_set, evm_summary_data 
 
 def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1, data_label_2, chart_title):
-
+    """creates a line chart with both datasets that displays EVM data"""
 
     #Data for the chart
     x_values = evm_data["Date"]
@@ -505,10 +438,6 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
     #Summary data for the annotations
     BAC = evm_summary_data["BAC"]
     EAC = evm_summary_data["EAC"]
-
-    #add in a modifier if BAC and EAC are too close together
-    print((BAC-EAC)/BAC)
-    print(.1*BAC)
 
     if (BAC-EAC)/BAC < .05 and (BAC-EAC)/BAC > 0: #BAC is greater but they are close together
         space_modifier = .01*BAC
@@ -609,7 +538,6 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
         ),
         height = 600,
         hovermode='x unified',
-        yaxis_tickprefix='$',
         yaxis_tickformat=',.0f',
         showlegend=False,
         plot_bgcolor='white',  # Set the plot background to white
@@ -626,8 +554,7 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
                     b=50)  # Adjust 'r' for right margin size (150px in this example)
     )
 
-    #TODO play around with this formatting
-    # Update x-axis to show datetime tick marks and values
+    #format axis
     fig.update_xaxes(
         tickformat='%Y-%m',  # Format for datetime tick marks
         tickmode='auto',        # Automatically determine the number of ticks
@@ -645,13 +572,10 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
         tickfont=dict(color='black')      # Title of the x-axis
         )
 
-    #fig.update_layout(paper_bgcolor ="white") # make background black b/c I don't know how to get black tick labels
-
-
     return fig
 
 def plot_bubble_chart(data):
-
+    """create a bubble chart based on both datasets"""
 
     df = pd.DataFrame(data)
 
@@ -680,7 +604,6 @@ def plot_bubble_chart(data):
         height = 600,
         xaxis_title='Date',
         yaxis_title='',
-        yaxis_tickprefix='$',
         yaxis_tickformat=',.0f',
         yaxis=dict(
             showgrid=True,
