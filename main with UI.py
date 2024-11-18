@@ -3,6 +3,16 @@ import streamlit as st
 st.set_page_config(layout="wide")
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
+from PIL import Image, ImageDraw, ImageFont
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+
+
+# Run pip install -U kaleido to install the kaleido package needed for plotly to_image()
+# Note on Windows must use kaleido version 0.1.0post1 for it to work with plotly
 
 
 # Initialize session state for navigation and data storage
@@ -128,7 +138,7 @@ def show_chart_screen():
     leadtime_multiplier = 10 
 
     st.header("Interactive EVM Tool")
-    
+    # Generate PDF and display download button
     if st.session_state.cost_df is not None and st.session_state.attribute_df is not None:
      
             # create a unique list of items from the cost data file
@@ -161,7 +171,7 @@ def show_chart_screen():
 
             # Lead Time Slider Bar
             lead_time_slider = st.sidebar.slider(
-                "Lead Time (default: ${default_lead_time})", 
+                f"Lead Time (default: ${default_lead_time})", 
                 min_value=0, 
                 max_value=default_lead_time*leadtime_multiplier, 
                 value=int(default_lead_time)
@@ -171,7 +181,7 @@ def show_chart_screen():
 
             # Yield Slider Bar
             yield_slider = st.sidebar.slider(
-                "Yield (%)", 
+                f"Lead Time (default: ${default_yield})", 
                 min_value=0.0,
                 max_value=1.0, 
                 value=float(default_yield)
@@ -181,7 +191,7 @@ def show_chart_screen():
 
             # Hours Slider Bar
             hours_slider = st.sidebar.slider(
-                "Hours", 
+                f"Hours (default: ${default_hours})", 
                 min_value=0.0, 
                 max_value=10.0, 
                 value=float(default_hours)
@@ -194,7 +204,7 @@ def show_chart_screen():
                 "item_yeild": yield_slider,
                 "item_hours": hours_slider
             }
-
+           
             #Display charts in tabs 
             tab1, tab2 = st.tabs([
                 "Cummulative Line Chart",
@@ -203,14 +213,41 @@ def show_chart_screen():
                 )
 
             with tab1: #Cummulative line chart
+                
                 placeholder = st.empty()
                 with placeholder.container():
-                    generate_charts(st.session_state.cost_df, st.session_state.attribute_df, item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="line_chart")
+                    fig1 = generate_charts(st.session_state.cost_df, st.session_state.attribute_df, item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="line_chart")
+
 
             with tab2: #Bubble chart
                 placeholder = st.empty()
                 with placeholder.container():
-                    generate_charts(st.session_state.cost_df, st.session_state.attribute_df,item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="bubble_chart")
+                    fig2 = generate_charts(st.session_state.cost_df, st.session_state.attribute_df,item_number=selected_item, user_attributes_dictionary=user_attributes_dictionary, chart_type="bubble_chart")
+
+
+            # PDF Generation
+            # Single button for export and download
+            if st.button("Export and Download PDF", key="export_pdf"):
+                initial_details = f"Initial Attributes: {default_yield*100}% Yield, ${default_cost:,.2f} item cost, {default_lead_time:,.2f} days lead time, {default_hours:,.2f} hours"
+                new_details = f"Modified Attributes: {yield_slider*100}% Yield, ${cost_slider:,.2f} item cost, {lead_time_slider:,.2f} days lead time, {hours_slider:,.2f} hours"
+                chart_details = f"{initial_details}\n{new_details}"
+                chart_title = f"Modified Cost Profile for {selected_item}"
+                st.write("Exporting PDF...")  # Debug log
+                # Generate the PDF
+                pdf_buffer = export_charts_to_pdf(fig1, fig2, chart_title, chart_details)
+                
+                if pdf_buffer:
+                    st.success("PDF generated successfully!")
+                    # Immediately serve the file for download
+                    st.download_button(
+                        label="Click here to download your PDF",
+                        data=pdf_buffer,
+                        file_name="charts.pdf",
+                        mime="application/pdf",
+                        key="download_button"
+                    )
+                else:
+                    st.error("PDF generation failed. Please check your input.")
 
 def generate_charts(
         cost_df,
@@ -239,11 +276,13 @@ def generate_charts(
     
     # Plot the relevant chart based on the chart type
     if chart_type == "line_chart":
-        fig1 = plot_line_chart_with_percent_delta(combined_data_set_with_evm, evm_summary_data, "Baseline", "Modified", "")
-        st.plotly_chart(fig1, use_container_width=True)
+        fig = plot_line_chart_with_percent_delta(combined_data_set_with_evm, evm_summary_data, "Baseline", "Modified", "")
+        st.plotly_chart(fig, use_container_width=True)
     elif chart_type == "bubble_chart":
-        fig2 = plot_bubble_chart(combined_data_set)
-        st.plotly_chart(fig2, use_container_width=True)
+        fig = plot_bubble_chart(combined_data_set)
+        st.plotly_chart(fig, use_container_width=True)
+
+    return fig
 
 def validate_columns_exist(expected_columns, df):
     """validates that the required columns exist in the uploaded dataframe"""
@@ -530,12 +569,7 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
 
     # Customize the layout
     fig.update_layout(
-        title=dict(
-            text=chart_title,
-            x=0.5,
-            xanchor='center',
-            yanchor='top'
-        ),
+        title='Cummulative Cost Profile',
         height = 600,
         hovermode='x unified',
         yaxis_tickformat=',.0f',
@@ -567,7 +601,6 @@ def plot_line_chart_with_percent_delta(evm_data, evm_summary_data, data_label_1,
     fig.update_yaxes(
         tickformat='$,.2f',  # Format for datetime tick marks
         tickmode='auto',        # Automatically determine the number of ticks
-        title_text='dollars',
         title_font=dict(color='black'),  # Explicitly set title font color
         tickfont=dict(color='black')      # Title of the x-axis
         )
@@ -600,7 +633,7 @@ def plot_bubble_chart(data):
 
     # Customize the layout
     fig.update_layout(
-        title='Baseline vs Current Costs Over Time',
+        title='Cost Magnitudes by Month',
         height = 600,
         xaxis_title='Date',
         yaxis_title='',
@@ -615,15 +648,6 @@ def plot_bubble_chart(data):
         xaxis=dict(
             showgrid=True,
             gridcolor='lightgray',
-            rangeselector=dict(
-                buttons=list([
-                    dict(count=1, label="1m", step="month", stepmode="backward"),
-                    dict(count=6, label="6m", step="month", stepmode="backward"),
-                    dict(count=1, label="YTD", step="year", stepmode="todate"),
-                    dict(count=1, label="1y", step="year", stepmode="backward"),
-                    dict(step="all")
-                ])
-            )
         ),
 
         plot_bgcolor='white',
@@ -634,18 +658,56 @@ def plot_bubble_chart(data):
         tickformat='%Y-%m',  # Format for datetime tick marks
         tickmode='auto',        # Automatically determine the number of ticks
         tickangle=0,           # Angle of the tick labels
-        title_text='Date',
         title_font=dict(color='black'),  # Explicitly set title font color
         tickfont=dict(color='black')      # Title of the x-axis
         )
 
     fig.update_yaxes(
         tickmode='auto',        # Automatically determine the number of ticks
-        title_text='dollars',
         title_font=dict(color='black'),  # Explicitly set title font color
         tickfont=dict(color='black')      # Title of the x-axis
         )
     return fig
+
+def export_charts_to_pdf(chart1, chart2, title, settings_text):
+    # Create an in-memory bytes buffer for the PDF
+    pdf_buffer = io.BytesIO()
+
+    # Initialize a PDF canvas
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
+    height = letter
+
+    # Add title to the PDF
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(72, height - 72, title)
+
+    # Add settings text
+    c.setFont("Helvetica", 9)
+    text_y = height - 100
+    for line in settings_text.split('\n'):
+        c.drawString(72, text_y, line)
+        text_y -= 14
+
+    # Convert Plotly charts to images
+    chart1_img = Image.open(io.BytesIO(chart1.to_image(format="png", width=1200, height=600, scale=2)))
+    chart2_img = Image.open(io.BytesIO(chart2.to_image(format="png", width=1200, height=600, scale=2)))
+
+    # Add the first chart image to the PDF
+    chart1_reader = ImageReader(chart1_img)
+    c.drawImage(chart1_reader, 72, text_y - 300, width=500, height=250)
+
+    # Add the second chart image to the PDF
+    chart2_reader = ImageReader(chart2_img)
+    c.drawImage(chart2_reader, 72, text_y - 600, width=500, height=250)
+
+    # Finalize and save the PDF
+    c.showPage()
+    c.save()
+
+    # Reset buffer position
+    pdf_buffer.seek(0)
+    return pdf_buffer
+
 
 
 # Run the app

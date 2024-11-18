@@ -1,9 +1,12 @@
 import streamlit as st
 import plotly.express as px
+import plotly, ipykernel, kaleido
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# run pip install -U kaleido to install the kaleido package needed for plotly to_image()
+
+
+# Run pip install -U kaleido to install the kaleido package needed for plotly to_image()
 
 # Step 1: Generate the Plotly graph
 df = px.data.iris()
@@ -18,7 +21,7 @@ img_bytes = fig.to_image(format="png")
 # Step 3: Add text to the image using PIL
 image = Image.open(io.BytesIO(img_bytes))
 draw = ImageDraw.Draw(image)
-font = ImageFont.load_default()
+font = ImageFont.load_default()  # You can also provide your custom font here if needed
 text = "Sample Text"
 text_position = (10, 10)
 draw.text(text_position, text, font=font, fill="black")
