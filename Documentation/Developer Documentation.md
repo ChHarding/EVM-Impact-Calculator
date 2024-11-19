@@ -39,6 +39,7 @@ InteractiveEVMTool/
 │   ├── InitialUploadData.csv
 │
 ├── main.py
+├── requirements.txt
 ├── README.md
 └── LICENSE
 ```
