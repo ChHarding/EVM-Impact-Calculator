@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+pillow
+reportlab
+kaleido==0.1.0post1  # Ensure compatibility with Plotly for PDF export on Windows
