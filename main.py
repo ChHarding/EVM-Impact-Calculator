@@ -3,12 +3,13 @@ import streamlit as st
 st.set_page_config(layout="wide")
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+import os
+import sys
 
 
 # Run pip install -U kaleido to install the kaleido package needed for plotly to_image()
@@ -712,5 +713,5 @@ def export_charts_to_pdf(chart1, chart2, title, settings_text):
 
 # Run the app
 if __name__ == "__main__":
-    main()
-
+    # Ensure the script runs as a Streamlit app
+    os.system(f"{sys.executable} -m streamlit run {__file__}")
